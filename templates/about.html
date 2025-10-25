@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - SVKM Typing Test</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header class="navbar">
+        <nav>
+            <a href="{{ url_for('main') }}" class="nav-link">Home</a>
+            <a href="{{ url_for('leaderboard') }}" class="nav-link">Leaderboard</a>
+            <a href="{{ url_for('about') }}" class="nav-link active">About</a>
+            <a href="{{ url_for('contact') }}" class="nav-link">Contact</a>
+            {% if 'user' in session %}
+                <a href="{{ url_for('logout') }}" class="nav-link">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="nav-link">Login</a>
+            {% endif %}
+        </nav>
+    </header>
+
+    <main class="content-container">
+        <section class="about-section">
+            <h1>About SVKM Typing Test</h1>
+            
+            <p>Welcome to the SVKM Typing Test platform! This application is designed by Nihal Singh Bisht from EXTC DJSCE , Tanvir Khan from AIML SBMPCOE </p>
+            
+            <h2>Our Mission</h2>
+            <p>HELP PEOPLE ACHEIVE 10K TROPHIES IN CLASH ROYALE :D</p>
+        
+        </section>
+    </main>
+</body>
+</html>

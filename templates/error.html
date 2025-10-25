@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVKMs TYPE - Error</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Lora:wght@400;500;600;700&family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='sample.css') }}">
+    <style>
+        body {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            background-color: var(--background);
+            color: var(--foreground);
+            font-family: var(--font-sans);
+        }
+
+        .error-container {
+            background-color: var(--card);
+            border-radius: var(--radius);
+            padding: 3rem;
+            box-shadow: var(--shadow-xl);
+            width: 100%;
+            max-width: 500px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .error-icon {
+            font-size: 4rem;
+            margin-bottom: 1.5rem;
+            color: var(--destructive);
+        }
+
+        .error-title {
+            font-family: var(--font-sans);
+            font-size: 2rem;
+            font-weight: 600;
+            color: var(--destructive);
+            margin-bottom: 1rem;
+        }
+
+        .error-message {
+            font-family: var(--font-sans);
+            font-size: 1.1rem;
+            color: var(--muted-foreground);
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--radius);
+            font-family: var(--font-sans);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-block;
+            border: none;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-primary {
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary);
+            color: var(--secondary-foreground);
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .music-button {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            background-color: var(--accent);
+            color: var(--accent-foreground);
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.2s ease;
+            z-index: 1000;
+        }
+
+        .music-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+        }
+
+        .music-button.playing {
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+            border-color: var(--accent);
+        }
+
+        @media (max-width: 768px) {
+            .error-container {
+                padding: 2rem;
+                margin: 1rem;
+            }
+            
+            .error-title {
+                font-size: 1.5rem;
+            }
+            
+            .error-actions {
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            .btn {
+                width: 100%;
+                max-width: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="music-button" id="music-button" onclick="toggleMusic()">
+        <span id="music-icon">🎵</span>
+    </button>
+    <audio id="background-music" loop preload="auto">
+        <source src="{{ url_for('static', filename='background-music.mp3') }}" type="audio/mpeg">
+        <source src="{{ url_for('static', filename='background-music.mp3') }}" type="audio/mp3">
+        Your browser does not support the audio element.
+    </audio>
+    
+    <div class="error-container">
+        <div class="error-icon">⚠️</div>
+        <h1 class="error-title">User Already Exists</h1>
+        <p class="error-message">
+            An account with this email or SAP ID already exists.<br>
+            Please try logging in instead of signing up.
+        </p>
+        <div class="error-actions">
+            <a href="/" class="btn btn-primary">Try Login</a>
+            <a href="/" class="btn btn-secondary">Go Back</a>
+        </div>
+    </div>
+
+    <script>
+        let isMusicPlaying = false;
+        
+        function toggleMusic() {
+            const music = document.getElementById('background-music');
+            const button = document.getElementById('music-button');
+            const icon = document.getElementById('music-icon');
+            
+            if (isMusicPlaying) {
+                music.pause();
+                icon.textContent = '🎵';
+                button.classList.remove('playing');
+                isMusicPlaying = false;
+            } else {
+                music.volume = 0.5;
+                
+                music.play().then(() => {
+                    icon.textContent = '⏸️';
+                    button.classList.add('playing');
+                    isMusicPlaying = true;
+                }).catch(e => {
+                    console.error('Error playing music:', e);
+                });
+            }
+        }
+        
+        // Handle music events
+        const musicElement = document.getElementById('background-music');
+        
+        musicElement.addEventListener('play', function() {
+            document.getElementById('music-icon').textContent = '⏸️';
+            document.getElementById('music-button').classList.add('playing');
+            isMusicPlaying = true;
+        });
+        
+        musicElement.addEventListener('pause', function() {
+            document.getElementById('music-icon').textContent = '🎵';
+            document.getElementById('music-button').classList.remove('playing');
+            isMusicPlaying = false;
+        });
+    </script>
+</body>
+</html>
