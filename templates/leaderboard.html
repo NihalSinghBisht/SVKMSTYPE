@@ -349,37 +349,40 @@
                 </select>
             </div>
 
-            {% if rankings %}
+            {% if error %}
+                <div class="error-message">{{ error }}</div>
+            {% endif %}
+            
+            {% if rankings and rankings|length > 0 %}
                 <table class="leaderboard-table">
                     <thead>
                         <tr>
                             <th>Rank</th>
-                            <th>Name</th>
-                            <th>College</th>
-                            <th>Best WPM</th>
-                            <th>Avg. Accuracy</th>
-                            <th>Tests</th>
+                            <th>Username</th>
+                            <th>WPM</th>
+                            <th>Accuracy</th>
+                            <th>Date</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for user in rankings %}
-                        <tr>
-                            <td class="rank rank-{{ loop.index if loop.index <= 3 else '' }}">{{ loop.index }}</td>
-                            <td class="name">{{ user.name }}</td>
-                            <td class="college">{{ user.college }}</td>
-                            <td class="wpm">{{ user.best_wpm|round|int }}</td>
-                            <td class="accuracy">{{ "%.1f"|format(user.avg_accuracy) }}%</td>
-                            <td class="tests">{{ user.tests_taken }}</td>
+                        {% for rank in rankings %}
+                        <tr {% if session.user.username == rank.username %}class="highlight-user"{% endif %}>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ rank.username }}</td>
+                            <td>{{ rank.wpm }}</td>
+                            <td>{{ "%.2f"|format(rank.accuracy) }}%</td>
+                            <td>{{ rank.created_at|default('N/A') }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             {% else %}
-                <div class="empty-state">
-                    <h3>No Rankings Available</h3>
-                    <p>No users have completed typing tests yet. Be the first to set a record!</p>
-                </div>
+                <p class="no-data">No scores available yet. Be the first to set a record!</p>
             {% endif %}
+            
+            <div class="button-container">
+                <a href="{{ url_for('main') }}" class="button">Back to Game</a>
+            </div>
         </div>
     </main>
     <script>
@@ -426,6 +429,11 @@
             document.getElementById('music-button').classList.remove('playing');
             isMusicPlaying = false;
         });
+
+        // Auto-refresh leaderboard every 30 seconds
+        setTimeout(function() {
+            window.location.reload();
+        }, 30000);
     </script>
 </body>
 </html>
