@@ -95,14 +95,28 @@ def leaderboard():
     
     try:
         logger.info("Fetching leaderboard data")
-        response = get_leaderboard(limit=50)  # Get top 50 scores
+        response = get_leaderboard(limit=50)
         
         if 'error' in response:
             logger.error(f"Error fetching leaderboard: {response['error']}")
             rankings = []
         else:
-            rankings = response.data if hasattr(response, 'data') else response
-            logger.info(f"Retrieved {len(rankings)} leaderboard entries")
+            raw_data = response.data if hasattr(response, 'data') else response
+            logger.info(f"Raw leaderboard data: {raw_data}")
+            
+            # Format the data for the template
+            rankings = []
+            for entry in raw_data:
+                formatted_entry = {
+                    'name': entry.get('username', 'Anonymous'),  # Use username as name
+                    'college': entry.get('college', 'Unknown'),  # Default to Unknown if not present
+                    'best_wpm': float(entry.get('wpm', 0)),  # Convert to float
+                    'avg_accuracy': float(entry.get('accuracy', 0)),  # Convert to float
+                    'tests_taken': 1  # Default to 1 since we're showing individual scores
+                }
+                rankings.append(formatted_entry)
+                
+            logger.info(f"Formatted {len(rankings)} entries for display")
             
         return render_template('leaderboard.html', rankings=rankings)
     
