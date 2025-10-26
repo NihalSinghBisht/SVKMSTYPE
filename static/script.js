@@ -296,28 +296,38 @@ function endTest() {
         liveStats.style.display = 'none';
         resultsDiv.classList.add('show');
         
-        // Submit test results to the server
-        const userEmail = JSON.parse(localStorage.getItem('userData')).email;
+        // Submit test results to the server with enhanced logging
+        console.log('Submitting test results:', { wpm, accuracy, rawWpm });
+        
         fetch('/submit_result', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                email: userEmail,
                 wpm: wpm,
                 accuracy: accuracy,
-                raw_wpm: rawWpm
+                duration_seconds: 60  // Fixed duration for 25-word test
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            console.log('Server response status:', response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log('Server response:', data);
             if (data.success) {
                 document.getElementById('view-leaderboard').style.display = 'inline-block';
                 document.getElementById('share-btn').style.display = 'inline-block';
+            } else {
+                console.error('Server reported error:', data.error);
+                alert('Error saving your score: ' + data.error);
             }
         })
-        .catch(error => console.error('Error submitting results:', error));
+        .catch(error => {
+            console.error('Error submitting results:', error);
+            alert('Error saving your score. Please try again.');
+        });
     }
 }
 
