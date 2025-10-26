@@ -63,7 +63,7 @@ def submit_result():
         if 'error' in response:
             return jsonify({'success': False, 'error': response['error']})
             
-        return jsonify({'success': True})
+        return jsonify({'success': True, 'redirect': '/leaderboard'})
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})

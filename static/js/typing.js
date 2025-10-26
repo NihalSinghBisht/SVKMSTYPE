@@ -1,9 +1,7 @@
 function handleTestCompletion(wpm, accuracy) {
     const data = {
-        email: userEmail,
         wpm: wpm,
-        accuracy: accuracy,
-        raw_wpm: rawWPM
+        accuracy: accuracy
     };
 
     fetch('/submit_result', {
@@ -15,8 +13,10 @@ function handleTestCompletion(wpm, accuracy) {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success && data.redirect) {
-            window.location.href = data.redirect;
+        if (data.success) {
+            window.location.href = data.redirect;  // Redirect to leaderboard
+        } else {
+            console.error('Error:', data.error);
         }
     })
     .catch(error => console.error('Error:', error));
