@@ -257,6 +257,39 @@
             margin-bottom: 1rem;
         }
 
+        .share-button {
+            background-color: var(--primary);
+            color: var(--primary-foreground);
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            font-family: var(--font-sans);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-lg);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .share-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-xl);
+            background-color: var(--accent);
+            color: var(--accent-foreground);
+        }
+
+        .share-button:active {
+            transform: translateY(0);
+        }
+
+        .share-button.copied {
+            background-color: var(--accent);
+            color: var(--accent-foreground);
+        }
+
         @media (max-width: 768px) {
             .leaderboard-container {
                 padding: 0 1rem;
@@ -359,6 +392,7 @@
                             <th>Best WPM</th>
                             <th>Avg. Accuracy</th>
                             <th>Tests</th>
+                            <th>Share</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -370,6 +404,11 @@
                             <td class="wpm">{{ user.best_wpm|round|int }}</td>
                             <td class="accuracy">{{ "%.1f"|format(user.avg_accuracy) }}%</td>
                             <td class="tests">{{ user.tests_taken }}</td>
+                            <td>
+                                <button class="share-button" onclick="shareResult(this, '{{ user.name }}', '{{ user.college }}', {{ user.best_wpm|round|int }}, {{ user.avg_accuracy }})">
+                                    Share 🚀
+                                </button>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -426,6 +465,33 @@
             document.getElementById('music-button').classList.remove('playing');
             isMusicPlaying = false;
         });
+
+        function shareResult(button, name, college, wpm, accuracy) {
+            const shareMessage = `🎯 ${name} from ${college} is crushing it on SVKMS Type!
+
+⚡ Typing Speed: ${wpm} WPM
+✅ Accuracy: ${accuracy.toFixed(1)}%
+
+Think you can beat this score? 👀
+Take the test: https://svkmstype.vercel.app   #forthenonchalants #typingod`;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(shareMessage).then(function() {
+                // Show success feedback
+                const originalText = button.textContent;
+                button.textContent = 'Copied! ✨';
+                button.classList.add('copied');
+                
+                // Reset button after 2 seconds
+                setTimeout(function() {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Could not copy text: ', err);
+                alert('Could not copy to clipboard. Please try again.');
+            });
+        }
     </script>
 </body>
 </html>
