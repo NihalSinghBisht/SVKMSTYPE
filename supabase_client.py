@@ -33,7 +33,7 @@ def get_supabase_client() -> Client:
 
 def insert_score(username: str, wpm: int, accuracy: float, duration_seconds: int):
     """
-    Insert a score row into Supabase `scores` table.
+    Insert a score row into leaderboard table.
     Returns (data, error) same as supabase client result.
     """
     try:
@@ -41,7 +41,7 @@ def insert_score(username: str, wpm: int, accuracy: float, duration_seconds: int
         logger.info(f"Score details - WPM: {wpm}, Accuracy: {accuracy}, Duration: {duration_seconds}")
         
         supabase = get_supabase_client()
-        resp = supabase.table("scores").insert(
+        resp = supabase.table("leaderboard").insert(
             {
                 "username": username,
                 "wpm": wpm,
@@ -64,7 +64,7 @@ def get_leaderboard(limit: int = 10):
     try:
         logger.info(f"Fetching leaderboard (limit: {limit})")
         supabase = get_supabase_client()
-        resp = supabase.table("scores").select("*").order("wpm", desc=True).limit(limit).execute()
+        resp = supabase.table("leaderboard").select("*").order("wpm", desc=True).limit(limit).execute()
         logger.info(f"Retrieved {len(resp.data) if hasattr(resp, 'data') else 0} leaderboard entries")
         return resp
     except Exception as e:
