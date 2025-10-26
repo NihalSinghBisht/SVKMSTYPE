@@ -2,9 +2,11 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 import sqlite3
 import secrets
 from database import initialize_database
+from datetime import timedelta
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)  # Generate a secure secret key
+app.permanent_session_lifetime = timedelta(days=7)  # Set session to last for 7 days
 
 # Initialize database on startup
 initialize_database()
@@ -139,9 +141,14 @@ def submit_result():
 
 @app.route('/leaderboard')
 def leaderboard():
+    print("Session data in leaderboard:", session)  # Debug print
     if 'user' not in session:
+        print("No user session found, redirecting to login")  # Debug print
         return redirect(url_for('login'))
-        
+    
+    # Make the session permanent when accessing leaderboard
+    session.permanent = True
+    
     college = request.args.get('college', 'all')
     rankings = []
     conn = None
