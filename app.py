@@ -1,10 +1,10 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session
-import secrets
 from datetime import timedelta
 from supabase_client import insert_score, get_leaderboard
+import os
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'svkm-typing-test-2025-secret-key')  # Use environment variable with fallback
 app.permanent_session_lifetime = timedelta(days=7)
 
 @app.route('/')
