@@ -1,23 +1,12 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session
-import sqlite3
 import secrets
-from database import initialize_database
 from datetime import timedelta
+from supabase_client import insert_score, get_leaderboard
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)  # Generate a secure secret key
-app.permanent_session_lifetime = timedelta(days=7)  # Set session to last for 7 days
+app.secret_key = secrets.token_hex(16)
+app.permanent_session_lifetime = timedelta(days=7)
 
-# Initialize database on startup
-initialize_database()
-
-# Database connection helper
-def get_db_connection():
-    conn = sqlite3.connect('svkm_typing.db')
-    conn.row_factory = sqlite3.Row
-    return conn
-
-# Routes
 @app.route('/')
 @app.route('/login')
 def login():
@@ -25,82 +14,26 @@ def login():
 
 @app.route('/login', methods=['POST'])
 def handle_login():
-    action = request.form.get('action')
     email = request.form.get('email')
-    sap_id = request.form.get('sap-id')  # This matches the form field name exactly
-
-    # Print debug information
-    print("Form data received:", request.form)
-    print("Action:", action)
-    print("Email:", email)
-    print("SAP ID:", sap_id)
+    sap_id = request.form.get('sap-id')
 
     if not email or not sap_id:
         error_msg = "Email and SAP ID are required."
-        print("Error:", error_msg)
         return render_template('login.html', error=error_msg)
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    try:
-        if action == 'signup':
-            name = request.form.get('name')
-            college = request.form.get('college')
-            
-            if not name or not college:
-                return "Name and College are required for signup.", 400
-            
-            # Check if user already exists
-            cursor.execute('SELECT * FROM users WHERE email = ? OR sap_id = ?', (email, sap_id))
-            existing_user = cursor.fetchone()
-            
-            if existing_user:
-                error_msg = "User already exists with this email or SAP ID."
-                print("Error:", error_msg)
-                return render_template('login.html', error=error_msg)
-            
-            # Insert new user
-            cursor.execute('''INSERT INTO users (name, email, sap_id, college) 
-                            VALUES (?, ?, ?, ?)''', (name, email, sap_id, college))
-            conn.commit()
-            
-        elif action == 'login':
-            # Verify user credentials
-            cursor.execute('SELECT * FROM users WHERE email = ? AND sap_id = ?', (email, sap_id))
-            user = cursor.fetchone()
-            
-            if not user:
-                error_msg = "Invalid credentials. Please try again."
-                print("Error:", error_msg)
-                return render_template('login.html', error=error_msg)
-        
-        else:
-            error_msg = "Invalid action specified."
-            print("Error:", error_msg)
-            return render_template('login.html', error=error_msg)
-
-    except sqlite3.Error as e:
-        return f"Database error: {str(e)}", 500
-    finally:
-        conn.close()
-
-    # If we get here, either login or signup was successful
-    # Store user info in session
+    # Since we're not using a users table, we'll just store the login info in session
     session['user'] = {
         'email': email,
-        'sap_id': sap_id
+        'sap_id': sap_id,
+        'username': email.split('@')[0]  # Use email prefix as username
     }
     return redirect(url_for('main'))
 
 @app.route('/main')
 @app.route('/home')
 def main():
-    print("Session data:", session)
     if 'user' not in session:
-        print("No user in session, redirecting to login")
         return redirect(url_for('login'))
-    print("User found in session, rendering main.html")
     return render_template('main.html')
 
 @app.route('/logout')
@@ -110,103 +43,47 @@ def logout():
 
 @app.route('/submit_result', methods=['POST'])
 def submit_result():
+    if 'user' not in session:
+        return jsonify({'success': False, 'error': 'Not logged in'})
+    
     data = request.json
-    email = data.get('email')
     wpm = data.get('wpm')
     accuracy = data.get('accuracy')
-    raw_wpm = data.get('raw_wpm')
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    duration = data.get('duration_seconds', 60)  # Default to 60 seconds if not provided
 
     try:
-        # Get user_id from email
-        cursor.execute('SELECT id FROM users WHERE email = ?', (email,))
-        user = cursor.fetchone()
-        if not user:
-            return jsonify({'success': False, 'error': 'User not found'})
-
-        # Insert test result
-        cursor.execute('''
-            INSERT INTO test_results (user_id, wpm, accuracy, raw_wpm)
-            VALUES (?, ?, ?, ?)
-        ''', (user['id'], wpm, accuracy, raw_wpm))
-        conn.commit()
+        # Insert score directly using the simplified function
+        response = insert_score(
+            username=session['user']['username'],
+            wpm=wpm,
+            accuracy=accuracy,
+            duration_seconds=duration
+        )
+        
+        if 'error' in response:
+            return jsonify({'success': False, 'error': response['error']})
+            
         return jsonify({'success': True})
 
-    except sqlite3.Error as e:
+    except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
-    finally:
-        conn.close()
 
 @app.route('/leaderboard')
 def leaderboard():
-    print("Session data in leaderboard:", session)  # Debug print
     if 'user' not in session:
-        print("No user session found, redirecting to login")  # Debug print
         return redirect(url_for('login'))
     
-    # Make the session permanent when accessing leaderboard
-    session.permanent = True
-    
-    college = request.args.get('college', 'all')
-    rankings = []
-    conn = None
-    cursor = None
-    
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # First check if there are any users
-        cursor.execute('SELECT COUNT(*) FROM users')
-        user_count = cursor.fetchone()[0]
-
-        if user_count == 0:
-            return render_template('leaderboard.html', rankings=[], selected_college=college)
-
-        if college != 'all':
-            # Get college-specific leaderboard
-            cursor.execute('''
-                SELECT 
-                    u.name,
-                    u.college,
-                    COALESCE(MAX(t.wpm), 0) as best_wpm,
-                    COALESCE(AVG(t.accuracy), 0) as avg_accuracy,
-                    COUNT(t.id) as tests_taken
-                FROM users u
-                LEFT JOIN test_results t ON u.id = t.user_id
-                WHERE u.college = ?
-                GROUP BY u.id, u.name, u.college
-                ORDER BY best_wpm DESC
-            ''', (college,))
+        response = get_leaderboard(limit=50)  # Get top 50 scores
+        if 'error' in response:
+            rankings = []
         else:
-            # Get global leaderboard
-            cursor.execute('''
-                SELECT 
-                    u.name,
-                    u.college,
-                    COALESCE(MAX(t.wpm), 0) as best_wpm,
-                    COALESCE(AVG(t.accuracy), 0) as avg_accuracy,
-                    COUNT(t.id) as tests_taken
-                FROM users u
-                LEFT JOIN test_results t ON u.id = t.user_id
-                GROUP BY u.id, u.name, u.college
-                ORDER BY best_wpm DESC
-            ''')
-        
-        rankings = cursor.fetchall()
-        return render_template('leaderboard.html', rankings=rankings, selected_college=college)
+            rankings = response.data if hasattr(response, 'data') else response
+        return render_template('leaderboard.html', rankings=rankings)
     
-    except sqlite3.Error as e:
-        print(f"Database error: {e}")
-        return render_template('leaderboard.html', rankings=[], selected_college=college)
-    
-    finally:
-        if cursor:
-            cursor.close()
-        if conn:
-            conn.close()
+    except Exception as e:
+        print(f"Error: {e}")
+        return render_template('leaderboard.html', rankings=[])
 
 @app.route('/about')
 def about():
@@ -225,32 +102,11 @@ def get_user_info():
     if 'user' not in session:
         return jsonify({'error': 'Not logged in'}), 401
         
-    email = request.args.get('email')
-    if not email:
-        return jsonify({'error': 'Email required'}), 400
-        
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    try:
-        cursor.execute('SELECT name, email, college, sap_id FROM users WHERE email = ?', (email,))
-        user = cursor.fetchone()
-        
-        if user:
-            return jsonify({
-                'name': user['name'],
-                'email': user['email'],
-                'college': user['college'],
-                'sapId': user['sap_id']
-            })
-        else:
-            return jsonify({'error': 'User not found'}), 404
-            
-    except sqlite3.Error as e:
-        return jsonify({'error': str(e)}), 500
-        
-    finally:
-        conn.close()
+    return jsonify({
+        'username': session['user']['username'],
+        'email': session['user']['email'],
+        'sapId': session['user']['sap_id']
+    })
 
 if __name__ == '__main__':
     app.run(debug=True)

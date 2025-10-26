@@ -27,7 +27,17 @@ def insert_score(username: str, wpm: int, accuracy: float, duration_seconds: int
                 "duration_seconds": int(duration_seconds)
             }
         ).execute()
-        return resp  # resp.data, resp.error
+        return resp
     except Exception as e:
-        # return a simple object structure for easy handling
+        return {"error": str(e)}
+
+def get_leaderboard(limit: int = 10):
+    """
+    Get the top scores ordered by WPM
+    Returns (data, error) same as supabase client result
+    """
+    try:
+        resp = supabase.table("scores").select("*").order("wpm", desc=True).limit(limit).execute()
+        return resp
+    except Exception as e:
         return {"error": str(e)}
