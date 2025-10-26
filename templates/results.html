@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Results - SVKMS Type</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='sample.css') }}">
+    <style>
+        .results-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--background);
+            padding: 2rem;
+        }
+        .results-card {
+            background: var(--card);
+            padding: 3rem;
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            position: relative;
+            border: 2px solid var(--border);
+        }
+        .results-title {
+            color: var(--primary);
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            font-family: var(--font-sans);
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin: 2rem 0;
+            position: relative;
+        }
+        .stats-grid::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 10%;
+            height: 80%;
+            width: 2px;
+            background: var(--border);
+            transform: translateX(-50%);
+        }
+        .stat-item {
+            text-align: center;
+            padding: 1.5rem;
+            transition: transform 0.3s ease;
+        }
+        .stat-item:hover {
+            transform: scale(1.05);
+        }
+        .stat-label {
+            color: var(--muted-foreground);
+            font-size: 1.2rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .stat-value {
+            color: var(--primary);
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px var(--muted);
+        }
+        .share-button {
+            background: var(--primary);
+            color: var(--primary-foreground);
+            border: 2px solid var(--border);
+            padding: 1rem 2.5rem;
+            border-radius: var(--radius);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: var(--font-sans);
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+        .share-button:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        .success-toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--accent);
+            color: var(--accent-foreground);
+            padding: 1rem 2rem;
+            border-radius: var(--radius);
+            display: none;
+            animation: slideUp 0.3s ease;
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+        }
+        @keyframes slideUp {
+            from { transform: translate(-50%, 100%); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="results-container">
+        <div class="results-card">
+            <h1 class="results-title">🎯 Test Completed!</h1>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value">⚡ {{ wpm }}</div>
+                    <div class="stat-label">Words Per Minute</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value">✅ {{ accuracy }}</div>
+                    <div class="stat-label">Accuracy %</div>
+                </div>
+            </div>
+            <button onclick="shareResults()" class="share-button">
+                📢 Share with your friends
+            </button>
+        </div>
+    </div>
+    <div id="success-toast" class="success-toast">🎉 Results copied to clipboard!</div>
+
+    <script>
+        function shareResults() {
+            const wpm = "{{ wpm }}";
+            const accuracy = "{{ accuracy }}";
+            const message = `🎯 I just completed the typing challenge on SVKMS Type!\n\n⚡ My Typing Speed: ${wpm} WPM\n✅ Accuracy: ${accuracy}%\n\nThink you can beat me? 👀\nTake the test: https://svkms-type.vercel.app/ #forthenonchalants #typegod`;
+            
+            navigator.clipboard.writeText(message)
+                .then(() => {
+                    const toast = document.getElementById('success-toast');
+                    toast.style.display = 'block';
+                    setTimeout(() => {
+                        toast.style.display = 'none';
+                    }, 3000);
+                })
+                .catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    alert('Could not copy to clipboard. Please try again!');
+                });
+        }
+    </script>
+</body>
+</html>
