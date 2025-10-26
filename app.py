@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session
-from supabase_client import insert_test_result
-
+import sqlite3
 import secrets
 from database import initialize_database
 
@@ -115,16 +114,28 @@ def submit_result():
     accuracy = data.get('accuracy')
     raw_wpm = data.get('raw_wpm')
 
-    response = insert_test_result(email, wpm, accuracy, raw_wpm)
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
-    if hasattr(response, "error") and response.error:
-        return jsonify({'success': False, 'error': str(response.error)})
+    try:
+        # Get user_id from email
+        cursor.execute('SELECT id FROM users WHERE email = ?', (email,))
+        user = cursor.fetchone()
+        if not user:
+            return jsonify({'success': False, 'error': 'User not found'})
 
-    if isinstance(response, dict) and "error" in response:
-        return jsonify({'success': False, 'error': response["error"]})
+        # Insert test result
+        cursor.execute('''
+            INSERT INTO test_results (user_id, wpm, accuracy, raw_wpm)
+            VALUES (?, ?, ?, ?)
+        ''', (user['id'], wpm, accuracy, raw_wpm))
+        conn.commit()
+        return jsonify({'success': True})
 
-    return jsonify({'success': True})
-
+    except sqlite3.Error as e:
+        return jsonify({'success': False, 'error': str(e)})
+    finally:
+        conn.close()
 
 @app.route('/leaderboard')
 def leaderboard():
