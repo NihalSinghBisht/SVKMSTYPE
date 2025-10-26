@@ -24,16 +24,19 @@ def login():
 def handle_login():
     email = request.form.get('email')
     sap_id = request.form.get('sap-id')
+    name = request.form.get('name', '')  # Get name from signup form
+    college = request.form.get('college', '')  # Get college from signup form
 
     if not email or not sap_id:
         error_msg = "Email and SAP ID are required."
         return render_template('login.html', error=error_msg)
 
-    # Since we're not using a users table, we'll just store the login info in session
+    # Store user info in session
     session['user'] = {
         'email': email,
         'sap_id': sap_id,
-        'username': email.split('@')[0]  # Use email prefix as username
+        'username': name if name else email.split('@')[0],  # Use name if available, else email prefix
+        'college': college  # Store college information
     }
     return redirect(url_for('main'))
 
@@ -62,15 +65,17 @@ def submit_result():
     wpm = data.get('wpm')
     accuracy = data.get('accuracy')
     duration = data.get('duration_seconds', 60)  # Default to 60 seconds if not provided
+    college = session['user'].get('college', 'Unknown')  # Fetch college from session
 
-    if not all([wpm, accuracy]):
-        logger.error(f"Missing required data - WPM: {wpm}, Accuracy: {accuracy}")
+    if not all([wpm, accuracy, college]):
+        logger.error(f"Missing required data - WPM: {wpm}, Accuracy: {accuracy}, College: {college}")
         return jsonify({'success': False, 'error': 'Missing required data'})
 
     try:
-        # Insert score directly using the simplified function
+        # Insert score directly using the updated function
         response = insert_score(
             username=session['user']['username'],
+            college=college,
             wpm=wpm,
             accuracy=accuracy,
             duration_seconds=duration
@@ -93,6 +98,8 @@ def leaderboard():
         logger.warning("Leaderboard access attempted without login")
         return redirect(url_for('login'))
     
+    selected_college = request.args.get('college', 'all')
+    
     try:
         logger.info("Fetching leaderboard data")
         response = get_leaderboard(limit=50)
@@ -101,28 +108,26 @@ def leaderboard():
             logger.error(f"Error fetching leaderboard: {response['error']}")
             rankings = []
         else:
-            raw_data = response.data if hasattr(response, 'data') else response
+            raw_data = response.get('data', [])
             logger.info(f"Raw leaderboard data: {raw_data}")
             
-            # Format the data for the template
-            rankings = []
-            for entry in raw_data:
-                formatted_entry = {
-                    'name': entry.get('username', 'Anonymous'),  # Use username as name
-                    'college': entry.get('college', 'Unknown'),  # Default to Unknown if not present
-                    'best_wpm': float(entry.get('wpm', 0)),  # Convert to float
-                    'avg_accuracy': float(entry.get('accuracy', 0)),  # Convert to float
-                    'tests_taken': 1  # Default to 1 since we're showing individual scores
-                }
-                rankings.append(formatted_entry)
+            # Filter by college if needed
+            if selected_college != 'all':
+                rankings = [entry for entry in raw_data if entry.get('college', '').upper() == selected_college.upper()]
+            else:
+                rankings = raw_data
+            
+            # Format the data for display
+            for rank in rankings:
+                rank['name'] = rank['username']  # Use username as name
                 
             logger.info(f"Formatted {len(rankings)} entries for display")
             
-        return render_template('leaderboard.html', rankings=rankings)
+        return render_template('leaderboard.html', rankings=rankings, selected_college=selected_college)
     
     except Exception as e:
         logger.error(f"Exception in leaderboard route: {str(e)}")
-        return render_template('leaderboard.html', rankings=[])
+        return render_template('leaderboard.html', rankings=[], selected_college=selected_college)
 
 @app.route('/about')
 def about():
@@ -146,6 +151,23 @@ def get_user_info():
         'email': session['user']['email'],
         'sapId': session['user']['sap_id']
     })
+
+@app.route('/admin/clear-data', methods=['POST'])
+def clear_data():
+    try:
+        from supabase_client import clear_leaderboard
+        response = clear_leaderboard()
+        
+        if 'error' in response:
+            logger.error(f"Error clearing data: {response['error']}")
+            return jsonify({'success': False, 'error': str(response['error'])})
+            
+        logger.info("Successfully cleared all leaderboard data")
+        return jsonify({'success': True, 'message': 'All leaderboard data has been cleared'})
+        
+    except Exception as e:
+        logger.error(f"Exception during data clearing: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)})
 
 if __name__ == '__main__':
     app.run(debug=True)

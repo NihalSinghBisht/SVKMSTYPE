@@ -31,19 +31,25 @@ def get_supabase_client() -> Client:
         logger.error(f"Failed to create Supabase client: {str(e)}")
         raise
 
-def insert_score(username: str, wpm: int, accuracy: float, duration_seconds: int):
+def insert_score(username: str, college: str, wpm: int, accuracy: float, duration_seconds: int):
     """
     Insert a score row into leaderboard table.
     Returns (data, error) same as supabase client result.
     """
     try:
         logger.info(f"Attempting to insert score for user: {username}")
-        logger.info(f"Score details - WPM: {wpm}, Accuracy: {accuracy}, Duration: {duration_seconds}")
+        logger.info(f"Score details - College: {college}, WPM: {wpm}, Accuracy: {accuracy}, Duration: {duration_seconds}")
         
         supabase = get_supabase_client()
+        
+        # First delete any existing record for this username
+        supabase.table("leaderboard").delete().eq("username", username).execute()
+        
+        # Then insert the new record
         resp = supabase.table("leaderboard").insert(
             {
                 "username": username,
+                "college": college,
                 "wpm": wpm,
                 "accuracy": float(accuracy),
                 "duration_seconds": int(duration_seconds)
@@ -58,15 +64,62 @@ def insert_score(username: str, wpm: int, accuracy: float, duration_seconds: int
 
 def get_leaderboard(limit: int = 10):
     """
-    Get the top scores ordered by WPM
+    Get the top scores ordered by WPM, showing only the best score per user
     Returns (data, error) same as supabase client result
     """
     try:
         logger.info(f"Fetching leaderboard (limit: {limit})")
         supabase = get_supabase_client()
-        resp = supabase.table("leaderboard").select("*").order("wpm", desc=True).limit(limit).execute()
-        logger.info(f"Retrieved {len(resp.data) if hasattr(resp, 'data') else 0} leaderboard entries")
-        return resp
+        
+        # First get all scores to calculate aggregates
+        resp = supabase.table("leaderboard").select("*").execute()
+        
+        # Group by username and calculate metrics
+        user_scores = {}
+        for entry in resp.data:
+            username = entry.get('username')
+            if username not in user_scores:
+                user_scores[username] = {
+                    'username': username,
+                    'college': entry.get('college', 'Unknown'),
+                    'best_wpm': float(entry.get('wpm', 0)),
+                    'avg_accuracy': float(entry.get('accuracy', 0)),
+                    'tests_taken': 1
+                }
+            else:
+                current = user_scores[username]
+                current['best_wpm'] = max(current['best_wpm'], float(entry.get('wpm', 0)))
+                current['avg_accuracy'] = (current['avg_accuracy'] * current['tests_taken'] + 
+                                        float(entry.get('accuracy', 0))) / (current['tests_taken'] + 1)
+                current['tests_taken'] += 1
+        
+        # Convert to list and sort by best WPM
+        rankings = list(user_scores.values())
+        rankings.sort(key=lambda x: x['best_wpm'], reverse=True)
+        
+        # Apply limit
+        rankings = rankings[:limit]
+        
+        logger.info(f"Retrieved {len(rankings)} unique users for leaderboard")
+        return {"data": rankings}
     except Exception as e:
         logger.error(f"Error fetching leaderboard: {str(e)}")
+        return {"error": str(e)}
+
+def clear_leaderboard():
+    """
+    Remove all records from the leaderboard table
+    Returns (data, error) same as supabase client result
+    """
+    try:
+        logger.info("Attempting to clear all leaderboard data")
+        supabase = get_supabase_client()
+        
+        # Delete all records from the leaderboard table
+        resp = supabase.table("leaderboard").delete().neq("id", 0).execute()
+        
+        logger.info("Successfully cleared leaderboard data")
+        return resp
+    except Exception as e:
+        logger.error(f"Error clearing leaderboard: {str(e)}")
         return {"error": str(e)}

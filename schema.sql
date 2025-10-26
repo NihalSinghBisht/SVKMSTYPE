@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS leaderboard (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Add a unique constraint to the username column
+ALTER TABLE leaderboard ADD CONSTRAINT unique_username UNIQUE (username);
+
 -- Add indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_leaderboard_wpm ON leaderboard(wpm DESC);
 CREATE INDEX IF NOT EXISTS idx_leaderboard_username ON leaderboard(username);
