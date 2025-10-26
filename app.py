@@ -1,27 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session
-import os
+import secrets
 from datetime import timedelta
 from supabase_client import insert_score, get_leaderboard
-import logging
 
 app = Flask(__name__)
-# Use environment variable for secret key
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'your-dev-secret-key-123')
-
-# Session configuration
-app.config.update(
-    SESSION_COOKIE_SECURE=True,
-    SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE='Lax',
-    PERMANENT_SESSION_LIFETIME=timedelta(days=7)
-)
-
-@app.before_request
-def make_session_permanent():
-    session.permanent = True
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+app.secret_key = secrets.token_hex(16)
+app.permanent_session_lifetime = timedelta(days=7)
 
 @app.route('/')
 @app.route('/login')
@@ -37,10 +21,11 @@ def handle_login():
         error_msg = "Email and SAP ID are required."
         return render_template('login.html', error=error_msg)
 
+    # Since we're not using a users table, we'll just store the login info in session
     session['user'] = {
         'email': email,
         'sap_id': sap_id,
-        'username': email.split('@')[0]
+        'username': email.split('@')[0]  # Use email prefix as username
     }
     return redirect(url_for('main'))
 
@@ -64,9 +49,10 @@ def submit_result():
     data = request.json
     wpm = data.get('wpm')
     accuracy = data.get('accuracy')
-    duration = data.get('duration_seconds', 60)
+    duration = data.get('duration_seconds', 60)  # Default to 60 seconds if not provided
 
     try:
+        # Insert score directly using the simplified function
         response = insert_score(
             username=session['user']['username'],
             wpm=wpm,
@@ -82,52 +68,22 @@ def submit_result():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@app.route('/save_score', methods=['POST'])
-def save_score():
-    try:
-        if 'user' not in session:
-            logger.warning("Attempt to save score without user session")
-            return jsonify({"error": "No user session"}), 401
-
-        data = request.get_json()
-        username = session['user']['username']
-        wpm = int(data.get('wpm', 0))
-        accuracy = float(data.get('accuracy', 0))
-        duration = int(data.get('duration_seconds', 60))
-
-        logger.info(f"Saving score for user {username}: WPM={wpm}, Accuracy={accuracy}")
-        result = insert_score(username, wpm, accuracy, duration)
-        
-        if isinstance(result, dict) and 'error' in result:
-            logger.error(f"Error saving score: {result['error']}")
-            return jsonify({"error": result['error']}), 500
-            
-        return jsonify({"message": "Score saved successfully"})
-    except Exception as e:
-        logger.error(f"Exception in save_score: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
 @app.route('/leaderboard')
 def leaderboard():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    
     try:
-        if 'user' not in session:
-            logger.warning("Attempt to access leaderboard without user session")
-            return redirect(url_for('login'))
-        
-        logger.info(f"Fetching leaderboard for user: {session['user']['username']}")
-        response = get_leaderboard(limit=50)
-        
-        if isinstance(response, dict) and 'error' in response:
-            logger.error(f"Error fetching leaderboard: {response['error']}")
-            return render_template('leaderboard.html', rankings=[], error=response['error'])
-        
-        rankings = response.data if hasattr(response, 'data') else response
-        logger.info(f"Successfully fetched {len(rankings)} leaderboard entries")
+        response = get_leaderboard(limit=50)  # Get top 50 scores
+        if 'error' in response:
+            rankings = []
+        else:
+            rankings = response.data if hasattr(response, 'data') else response
         return render_template('leaderboard.html', rankings=rankings)
     
     except Exception as e:
-        logger.error(f"Exception in leaderboard route: {str(e)}")
-        return render_template('leaderboard.html', rankings=[], error=str(e))
+        print(f"Error: {e}")
+        return render_template('leaderboard.html', rankings=[])
 
 @app.route('/about')
 def about():
