@@ -51,9 +51,17 @@ def validate_username(username):
     if contains_inappropriate_text(username):
         return False, "Username contains inappropriate language"
     
-    # Check for RIYA variants anywhere in the username
-    if re.search(r'r\s*i\s*y\s*a+', username.lower()):
-        return False, "This username is not allowed"
+    # Check for all name variants anywhere in the username
+    blocked_patterns = [
+        r'r\s*i\s*y\s*a+',
+        r'r\s*h\s*e\s*a+',
+        r'r\s*i\s*a+',
+        r'r\s*e+\s*y\s*a+'
+    ]
+    
+    for pattern in blocked_patterns:
+        if re.search(pattern, username.lower()):
+            return False, "This username is not allowed"
     
     # Check minimum length
     if len(username) < 3:
