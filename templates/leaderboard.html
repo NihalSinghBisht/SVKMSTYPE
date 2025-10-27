@@ -397,16 +397,16 @@
                     </thead>
                     <tbody>
                         {% for user in rankings %}
-                        {% if user.name not in ['tanvir ki ma ka client', 'Vedant marry Aashi', 'RIYA NIHAL SINGH', 'Nihal', 'Tanvir ka client'] %}
+                        {% if user.name.lower() not in ['nihal singh bisht', 'nihal singh bisht'] %}
                         <tr>
                             <td class="rank rank-{{ loop.index if loop.index <= 3 else '' }}">{{ loop.index }}</td>
                             <td class="name">{{ user.name }}</td>
                             <td class="college">{{ user.college }}</td>
-                            <td class="wpm">{% if user.name == 'Nihal Singh Bisht' %}90{% else %}{{ user.best_wpm|round|int }}{% endif %}</td>
+                            <td class="wpm">{{ user.best_wpm|round|int }}</td>
                             <td class="accuracy">{{ "%.1f"|format(user.avg_accuracy) }}%</td>
                             <td class="tests">{{ user.tests_taken }}</td>
                             <td>
-                                <button class="share-button" onclick="shareResult(this, '{{ user.name }}', '{{ user.college }}', {% if user.name == 'Nihal Singh Bisht' %}90{% else %}{{ user.best_wpm|round|int }}{% endif %}, {{ user.avg_accuracy }})">
+                                <button class="share-button" onclick="shareResult(this, '{{ user.name }}', '{{ user.college }}', {{ user.best_wpm|round|int }}, {{ user.avg_accuracy }})">
                                     Share 🚀
                                 </button>
                             </td>
