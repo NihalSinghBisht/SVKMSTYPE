@@ -51,6 +51,10 @@ def validate_username(username):
     if contains_inappropriate_text(username):
         return False, "Username contains inappropriate language"
     
+    # Check for RIYA variants
+    if re.match(r'^r\s*i\s*y\s*a+\b', username.lower()):
+        return False, "This username is not allowed"
+    
     # Check minimum length
     if len(username) < 3:
         return False, "Username must be at least 3 characters long"
