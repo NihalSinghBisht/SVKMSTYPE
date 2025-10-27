@@ -1,8 +1,11 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session
 from datetime import timedelta
-from supabase_client import insert_score, get_leaderboard
+from supabase_client import insert_score, get_leaderboard, delete_user_from_leaderboard
+from better_profanity import profanity
+from custom_profanity import CUSTOM_PROFANITY_WORDS
 import os
 import logging
+import re
 
 # Configure logging
 logging.basicConfig(
@@ -11,9 +14,56 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Configure profanity filter
+profanity.load_censor_words()
+profanity.add_censor_words(CUSTOM_PROFANITY_WORDS)
+
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'svkm-typing-test-2025-secret-key')  # Use environment variable with fallback
 app.permanent_session_lifetime = timedelta(days=7)
+
+def contains_inappropriate_text(text):
+    """
+    Advanced check for inappropriate content including Hindi terms and variations
+    """
+    # Convert to lowercase for better matching
+    text = text.lower()
+    
+    # Check using better-profanity library
+    if profanity.contains_profanity(text):
+        return True
+        
+    # Check for substrings (to catch partial matches like "ma ka")
+    for word in CUSTOM_PROFANITY_WORDS:
+        if word.lower() in text:
+            return True
+            
+    # Check for common patterns with spaces or dots
+    text_without_spaces = text.replace(" ", "").replace(".", "")
+    for word in CUSTOM_PROFANITY_WORDS:
+        if word.replace(" ", "").lower() in text_without_spaces:
+            return True
+            
+    return False
+
+def validate_username(username):
+    # Check for inappropriate content
+    if contains_inappropriate_text(username):
+        return False, "Username contains inappropriate language"
+    
+    # Check minimum length
+    if len(username) < 3:
+        return False, "Username must be at least 3 characters long"
+    
+    # Check maximum length
+    if len(username) > 30:
+        return False, "Username must be less than 30 characters"
+    
+    # Only allow letters, numbers, and underscores
+    if not username.replace('_', '').isalnum():
+        return False, "Username can only contain letters, numbers, and underscores"
+    
+    return True, ""
 
 @app.route('/')
 @app.route('/login')
@@ -31,11 +81,18 @@ def handle_login():
         error_msg = "Email and SAP ID are required."
         return render_template('login.html', error=error_msg)
 
+    # Validate username
+    username = name if name else email.split('@')[0]
+    is_valid, error_message = validate_username(username)
+    
+    if not is_valid:
+        return render_template('login.html', error=error_message)
+
     # Store user info in session
     session['user'] = {
         'email': email,
         'sap_id': sap_id,
-        'username': name if name else email.split('@')[0],  # Use name if available, else email prefix
+        'username': username,
         'college': college  # Store college information
     }
     return redirect(url_for('main'))
@@ -168,6 +225,26 @@ def clear_data():
     except Exception as e:
         logger.error(f"Exception during data clearing: {str(e)}")
         return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/admin/remove-user', methods=['POST'])
+def remove_inappropriate_user():
+    try:
+        username = request.form.get('username')
+        if not username:
+            return jsonify({'success': False, 'error': 'Username is required'}), 400
+            
+        response = delete_user_from_leaderboard(username)
+        
+        if 'error' in response:
+            logger.error(f"Error removing user {username}: {response['error']}")
+            return jsonify({'success': False, 'error': str(response['error'])}), 500
+            
+        logger.info(f"Successfully removed inappropriate username: {username}")
+        return jsonify({'success': True, 'message': f'User {username} has been removed from the leaderboard'})
+        
+    except Exception as e:
+        logger.error(f"Exception during user removal: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)

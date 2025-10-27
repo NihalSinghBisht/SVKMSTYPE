@@ -123,3 +123,21 @@ def clear_leaderboard():
     except Exception as e:
         logger.error(f"Error clearing leaderboard: {str(e)}")
         return {"error": str(e)}
+
+def delete_user_from_leaderboard(username: str):
+    """
+    Remove all entries for a specific user from the leaderboard
+    Returns (data, error) same as supabase client result
+    """
+    try:
+        logger.info(f"Attempting to delete user {username} from leaderboard")
+        supabase = get_supabase_client()
+        
+        # Delete all records for this username
+        resp = supabase.table("leaderboard").delete().eq("username", username).execute()
+        
+        logger.info(f"Successfully deleted user {username} from leaderboard")
+        return resp
+    except Exception as e:
+        logger.error(f"Error deleting user from leaderboard: {str(e)}")
+        return {"error": str(e)}

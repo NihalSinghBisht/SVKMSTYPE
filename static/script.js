@@ -120,7 +120,10 @@ function setupEventListeners() {
             if (!state.started) {
                 resetTest();
             } else if (state.started && !state.finished) {
-                endTest();
+                // Only allow ending the test with Enter if all words are typed
+                if (state.wordsTyped >= config.wordCount) {
+                    endTest();
+                } // else do nothing
             }
         } else if (e.key === 'Escape') {
             e.preventDefault();
@@ -158,6 +161,15 @@ function handleInput(e) {
     const input = e.target.value;
     const currentWord = state.words[state.currentWordIndex];
     
+    // Check if this is the last word and it matches exactly
+    if (state.currentWordIndex === config.wordCount - 1 && 
+        input === currentWord.text) {
+        checkWord(input, currentWord);
+        state.wordsTyped++;
+        endTest();
+        return;
+    }
+    
     if (input.endsWith(' ')) {
         // Move to next word
         const typedWord = input.trim();
@@ -167,9 +179,9 @@ function handleInput(e) {
         typingInput.value = '';
         state.input = '';
         state.wordsTyped++;
-        
         if (state.wordsTyped >= config.wordCount) {
             endTest();
+            return;
         }
     } else {
         // Update current word

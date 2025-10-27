@@ -10,3 +10,4 @@ wheel==0.45.1
 supabase==2.0.3
 python-dotenv==1.0.0
 requests==2.31.0
+better-profanity==0.7.0
