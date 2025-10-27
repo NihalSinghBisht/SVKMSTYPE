@@ -13,12 +13,8 @@ supabase = create_client(
 
 # Users to remove
 users_to_remove = [
-    "dalit panter 🐯",
-    "tanvir ki ma ka client",
-    "Vedant marry Aashi",
-    "RIYA NIHAL SINGH",
-    "Nihal",
-    "Tanvir ka client"
+    "Nihal singh bisht",
+    "Nihal Singh Bisht"
 ]
 
 def remove_users():
@@ -32,6 +28,14 @@ def remove_users():
             print(f"- Deleted user entry and their scores")
             
         print("\nAll specified users and their data have been removed successfully!")
+        
+        # Get current leaderboard sorted by WPM to verify the update
+        result = supabase.table('leaderboard').select('username, wpm, accuracy').order('wpm', desc=True).execute()
+        
+        if result.data:
+            print("\nCurrent leaderboard order:")
+            for entry in result.data:
+                print(f"{entry['username']}: {entry['wpm']} WPM")
         
     except Exception as e:
         print(f"Error occurred: {str(e)}")
