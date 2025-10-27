@@ -44,6 +44,18 @@ def contains_inappropriate_text(text):
         if word.replace(" ", "").lower() in text_without_spaces:
             return True
             
+    # Check for specific inappropriate patterns
+    inappropriate_patterns = [
+        r'maa\s*ka',
+        r'teri\s*maa',
+        r'ashiq',
+        r'left\s*nihal'
+    ]
+    
+    for pattern in inappropriate_patterns:
+        if re.search(pattern, text_without_spaces):
+            return True
+            
     return False
 
 def validate_username(username):
